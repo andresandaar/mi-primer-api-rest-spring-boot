@@ -8,10 +8,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.std.ec.exception.BadRequestException;
+import com.std.ec.exception.ResourceNotFoundException;
 import com.std.ec.model.dto.ClienteDto;
 import com.std.ec.model.entity.Cliente;
 import com.std.ec.model.payload.MensajeResponse;
 import com.std.ec.service.IClienteService;
+
+import jakarta.validation.Valid;
+
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -27,7 +32,7 @@ public class ClienteController {
     private IClienteService clienteService;
 
     @PostMapping("cliente")
-    public ResponseEntity<MensajeResponse> create(@RequestBody ClienteDto clienteDto) {
+    public ResponseEntity<MensajeResponse> create(@RequestBody @Valid ClienteDto clienteDto) {
         Cliente clienteSave = null;
         try {
 
@@ -43,13 +48,13 @@ public class ClienteController {
 
         } catch (DataAccessException ex) {
             // Manejar excepciones relacionadas con la base de datos
-            return handleDataAccessException(ex);
+            throw new BadRequestException(ex.getMessage()); 
         }
 
     }
 
     @PutMapping("cliente/{idCliente}")
-    public ResponseEntity<?> update(@RequestBody ClienteDto clienteDto, @PathVariable Integer idCliente) {
+    public ResponseEntity<?> update(@RequestBody @Valid ClienteDto clienteDto, @PathVariable Integer idCliente) {
 
         Cliente clienteUpdate = null;
         try {
@@ -70,17 +75,12 @@ public class ClienteController {
 
             } else {
                 // El registro no se encuentra en la base de datos
-                return ResponseEntity
-                        .status(HttpStatus.NOT_FOUND)
-                        .body(MensajeResponse.builder()
-                                .mensaje("El registro que intenta actualizar no se encuentra en la base de datos!!")
-                                .object(null)
-                                .build());
+                throw new ResourceNotFoundException("Cliente","id",idCliente); 
             }
 
         } catch (DataAccessException ex) {
             // Manejar excepciones relacionadas con la base de datos
-            return handleDataAccessException(ex);
+            throw new BadRequestException(ex.getMessage()); 
 
         }
     }
@@ -104,19 +104,15 @@ public class ClienteController {
             } else {
                 // Si el cliente no existe, devuelve un ResponseEntity con un mensaje y estado
                 // NOT FOUND
-                return ResponseEntity
-                        .status(HttpStatus.NOT_FOUND)
-                        .body(MensajeResponse.builder()
-                                .mensaje("El registro no existe!!")
-                                .object(null)
-                                .build());
+                throw new ResourceNotFoundException("Cliente","id",idCliente); 
+
             }
 
         } catch (DataAccessException ex) {
 
             // Si hay una excepción de acceso a datos, devuelve un ResponseEntity con un
             // mensaje y estado METHOD NOT ALLOWED
-            return handleDataAccessException(ex);
+            throw new BadRequestException(ex.getMessage()); 
         }
     }
 
@@ -127,12 +123,7 @@ public class ClienteController {
             Cliente clienteById = clienteService.findById(idCliente);
 
             if (clienteById == null) {
-                return ResponseEntity
-                        .status(HttpStatus.NOT_FOUND)
-                        .body(MensajeResponse.builder()
-                                .mensaje("El registro no existe!!")
-                                .object(null)
-                                .build());
+                throw new ResourceNotFoundException("Cliente","id",idCliente);  
             }
 
             // Construir la respuesta exitosa
@@ -148,7 +139,7 @@ public class ClienteController {
         } catch (DataAccessException ex) {
             // Si hay una excepción de acceso a datos, devuelve un ResponseEntity con un
             // mensaje y estado METHOD NOT ALLOWED
-            return handleDataAccessException(ex);
+            throw new BadRequestException(ex.getMessage()); 
         }
 
     }
@@ -159,12 +150,7 @@ public class ClienteController {
             List<Cliente> clientes = clienteService.findAll();
 
             if (clientes == null || clientes.isEmpty()) {
-                return ResponseEntity
-                        .status(HttpStatus.OK)
-                        .body(MensajeResponse.builder()
-                                .mensaje("No hay registros!!")
-                                .object(null)
-                                .build());
+                throw new ResourceNotFoundException("Clientes");
             }
 
             return ResponseEntity
@@ -173,11 +159,12 @@ public class ClienteController {
                             .mensaje("Clientes encontrados correctamente")
                             .object(clientes)
                             .build());
+                             
 
         } catch (DataAccessException ex) {
             // Si hay una excepción de acceso a datos, devuelve un ResponseEntity con un
             // mensaje y estado INTERNAL SERVER ERROR
-            return handleDataAccessException(ex);
+            throw new BadRequestException(ex.getMessage()); 
         }
     }
 
@@ -189,15 +176,6 @@ public class ClienteController {
                 .correo(cliente.getCorreo())
                 .fechaRegistro(cliente.getFechaRegistro())
                 .build();
-    }
-
-    private ResponseEntity<MensajeResponse> handleDataAccessException(DataAccessException ex) {
-        return ResponseEntity
-                .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(MensajeResponse.builder()
-                        .mensaje("Error al acceder a la base de datos: " + ex.getMessage())
-                        .object(null)
-                        .build());
     }
 
 }
